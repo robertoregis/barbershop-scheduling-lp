@@ -1,21 +1,18 @@
 <script lang="ts">
-    // fazer a autenticação com o firebase
-    import { getAuth, signInWithCustomToken, signOut } from "firebase/auth";
-    // para mexer com o banco de dados firestore do firebase
     import { collection, getDocs, query, where, doc, getDoc, Timestamp, updateDoc, orderBy, addDoc, limit, getCountFromServer } from 'firebase/firestore';
-    // para usar os cards de notificações
     import { useToast } from 'vue-toastification';
-    // para usar o firebase
-    import { useFirebase } from '@/composables/useFirebase';
-    // é o store responsável por gerenciar o que vai ser exibido
-    import { useData } from '@/stores/data';
+    import { useFirebase } from '../composables/useFirebase';
+    import { useData } from '../stores/data';
     import { addDays, format } from 'date-fns';
-    import { useAuthentication } from '@/stores/authentication';
+    import { useAuthentication } from '../stores/authentication';
+    import { useCreate } from '../composables/createFirebase';
+    import { useShow } from '../stores/show';
 
     export default {
         setup() {
             const data: any = useData()
             const authentication: any = useAuthentication()
+            const show = useShow()
             // para mexer com as tags heads
             useHead({
                 title: `Login do Painel Administrativo (indicaPix)`,
@@ -28,6 +25,7 @@
             })
             // usando o firestore do firebase
             const { firestore } = useFirebase()
+            const { addInteraction, addWarning } = useCreate()
             const router = useRouter()
             const toast = useToast()
             const config = ref<any>()
@@ -77,7 +75,7 @@
                 if(hairstylesDoc.length > 0) {
                     hairstyles.value = hairstylesDoc
                 }
-                console.log(hairstyles.value)
+                //console.log(hairstyles.value)
                 loading.value = false
             }
             const getCounters = (times: any, order: any) => {
@@ -117,8 +115,6 @@
                         ...doc.data()
                     })
                 });
-                console.log('kkkk')
-                console.log(hourSchedulesDoc)
                 if(hourSchedulesDoc.length > 0) {
                     hourSchedule.value = hourSchedulesDoc[0]
                     getTimes()
@@ -167,6 +163,7 @@
                 isActiveHairStyles.value = true
             }
             const scheduleHour = async() => {
+                show.setIsLoadingGlobal(true)
                 let dateTimestamp = Timestamp.fromDate(new Date())
                 let code = generateCode(7)
                 if(data.data_schedule.isAccount) {
@@ -223,16 +220,32 @@
                                     schedule_id: scheduleDocRef.id
                                 });
                             })
+                            addInteraction({
+                                text: `O usuário ${authentication.user.name} efetuou o agendamento: ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${hourSchedule.value.date}`,
+                                user_id: authentication.userId,
+                                barber_id: "",
+                                is_master: false,
+                            })
+                            addWarning({
+                                type: "update",
+                                text: `O agendamento ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${hourSchedule.value.date} foi feito pelo usuário ${authentication.user.name}`,
+                                user_id: authentication.userId,
+                                barber_id: "",
+                                is_master: false,
+                            })
+                            show.setIsLoadingGlobal(false)
                             toast.success("Agendado com sucesso!");
                             router.push('/agendamentos')
                         }
                     } catch (error) {
+                        show.setIsLoadingGlobal(false)
                         console.error("Erro ao agendar o documento:", error);
                         toast.error("Erro ao agendar!")
                     }
                 } else {
                     try {
                         if(!name.value) {
+                            show.setIsLoadingGlobal(false)
                             toast.error('É preciso digitar um nome para identificação')
                             return
                         }
@@ -317,17 +330,33 @@
                             })
                             //////
                             data.setAnomynousCode(code)
+                            addInteraction({
+                                text: `A pessoa ${name.value} efetuou o agendamento: ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${hourSchedule.value.date}`,
+                                user_id: code,
+                                barber_id: "",
+                                is_master: false,
+                            })
+                            addWarning({
+                                type: "update",
+                                text: `O agendamento ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${hourSchedule.value.date} foi feito pela pessoa ${name.value}`,
+                                user_id: code,
+                                barber_id: "",
+                                is_master: false,
+                            })
                             isActiveCode.value = true
                         } else {
+                            show.setIsLoadingGlobal(false)
                             toast.error('Erro ao criar o código')
                         }
                     } catch (error) {
+                        show.setIsLoadingGlobal(false)
                         console.error("Erro ao agendar o documento:", error);
                         toast.error("Erro ao agendar!")
                     }
                 }
             }
             const nextCode = () => {
+                show.setIsLoadingGlobal(false)
                 isActiveCode.value = false
                 toast.success("Agendado com sucesso!");
                 router.push('/agendamentos')

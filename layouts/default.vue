@@ -1,9 +1,10 @@
 <script lang="ts">
   import { getAuth, signInWithCustomToken, signOut } from "firebase/auth";
-  import { collection, getDocs, query, where, doc, getDoc, addDoc, Timestamp } from 'firebase/firestore';
+  import { doc, getDoc, addDoc, Timestamp } from 'firebase/firestore';
   import { useToast } from 'vue-toastification';
-  import { useFirebase } from '@/composables/useFirebase';
-  import { useAuthentication } from '@/stores/authentication';
+  import { useFirebase } from '../composables/useFirebase';
+  import { useAuthentication } from '../stores/authentication';
+  import { useShow } from '../stores/show';
 
   export default {
     setup() {
@@ -14,10 +15,7 @@
       const router = useRouter()
       const toast = useToast()
       const authentication: any = useAuthentication()
-
-      const getWindow = () => {
-        windowWidth.value = window.innerWidth
-      }
+      const show = useShow()
 
       const isLogin = async () => {
         const user: any = auth.currentUser;
@@ -33,9 +31,15 @@
                 ...docSnapshot.data()
               })
               loading.value = false
+          } else {
+            signOut(auth).then(() => {
+              loading.value = false
+            })
           }
         } else {
-          loading.value = false
+          signOut(auth).then(() => {
+            loading.value = false
+          })
         }
       }
 
@@ -49,6 +53,7 @@
         //changeNav,
         windowWidth,
         loading,
+        show
       }
     }
   } 
@@ -57,7 +62,11 @@
 <template>
   <div class="bg-neutral-700 min-h-[100%]">
     <slot v-if="!loading" />
+    <div v-else class="h-screen w-screen flex justify-center items-center">
+      <Loading />
+    </div>
   </div>
+  <LoadingGlobal v-if="show.isLoadingGlobal" />
 </template>
 
 <style lang="scss" scoped>

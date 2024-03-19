@@ -1,5 +1,5 @@
 import { addDoc, collection, Timestamp } from "firebase/firestore";
-import { useFirebase } from "@/composables/useFirebase";
+import { useFirebase } from "./useFirebase";
 import { useDateCurrent } from './date';
 
   interface AddWarningOptions {
@@ -7,7 +7,7 @@ import { useDateCurrent } from './date';
     text: string;
     user_id?: string;
     barber_id?: string;
-    is_master: string;
+    is_master: boolean;
     is_released?: boolean;
   }
 
@@ -15,7 +15,7 @@ import { useDateCurrent } from './date';
     text: string;
     user_id?: string;
     barber_id?: string;
-    is_master: string;
+    is_master: boolean;
     is_released?: boolean;
   }
 

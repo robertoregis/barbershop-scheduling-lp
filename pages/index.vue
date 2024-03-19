@@ -1,20 +1,26 @@
 <script lang="ts">
     import { getAuth, signInWithCustomToken, signOut } from "firebase/auth";
-    import { collection, getDocs, query, where, doc, getDoc, addDoc, Timestamp } from 'firebase/firestore';
+    import { collection, getDocs, query, where, doc, getDoc, addDoc, Timestamp, updateDoc } from 'firebase/firestore';
     import { useToast } from 'vue-toastification';
-    import { useFirebase } from '@/composables/useFirebase';
-    import { useData } from '@/stores/data';
+    import { useFirebase } from '../composables/useFirebase';
+    import { useData } from '../stores/data';
     import { addDays, format } from 'date-fns';
     import CryptoJS from 'crypto-js';
-    import { useAuthentication } from '@/stores/authentication';
+    import { useAuthentication } from '../stores/authentication';
+    import { useCreate } from '../composables/createFirebase';
+    import { useShow } from '../stores/show';
+
+    import { useRouter } from 'vue-router';
+    import { computed, onMounted, ref } from 'vue';
 
     export default {
         setup() {
             const data = useData()
             const authentication: any = useAuthentication()
+            const show = useShow()
             // para mexer com as tags heads
             useHead({
-                title: `Login do Painel Administrativo (indicaPix)`,
+                title: `Barbearia do Bronxs`,
                 meta: [
                 {
                     name: 'description',
@@ -24,6 +30,7 @@
             })
             // usando o firestore do firebase
             const { firestore, auth } = useFirebase()
+            const { addInteraction, addWarning } = useCreate()
             const router = useRouter()
             const toast = useToast()
             const salt = useRuntimeConfig().public.SALT
@@ -84,6 +91,7 @@
                 }
             }
             const createUser = async (name: string, email: string, passwordUser: string, phone?: string) => {
+                show.setIsLoadingGlobal(true)
                 const { password, passwordHash }: any = generatePassword(passwordUser)
                 let dateTimestamp = Timestamp.fromDate(new Date())
                 try {
@@ -103,24 +111,53 @@
                         image_id: '',
                         image_url: 'https://firebasestorage.googleapis.com/v0/b/app-barbearia-bronxs.appspot.com/o/avatar.png?alt=media&token=fe382f83-7697-4bdd-a1d1-6eddd6f3568c'
                     })
+                    addInteraction({
+                        text: `O usuário ${name} efetuou o cadastro`,
+                        user_id: userDoc.id,
+                        barber_id: "",
+                        is_master: false,
+                    })
+                    addWarning({
+                        type: "update",
+                        text: `Foi feito o cadastro do usuário ${name}`,
+                        user_id: userDoc.id,
+                        barber_id: "",
+                        is_master: false,
+                    })
                     toast.success('Sucesso ao criar a conta')
                     let date = new Date()
-                    generateTokenApi(name, userDoc.id, email, date).then((response) => {
+                    generateTokenApi(name, userDoc.id, email, "user", date).then(async (response) => {
                         if(response.status) {
                             signInWithCustomToken(auth, response.token)
+                            const userDocRef = doc(firestore, "Users", userDoc.id); // Referência ao documento "config"
+                            const userDocSnapshot = await getDoc(userDocRef);
+                            authentication.setUser({
+                                id: userDocSnapshot.id,
+                                ...userDocSnapshot.data()
+                            })
+                            authentication.setUserId(userDocSnapshot.id)
+                            show.setIsLoadingGlobal(false)
                             toast.success('Sucesso ao logar')
                             clearRegister.value = true
                             isActiveRegister.value = false
+                            isActive.value = false
+                            await updateDoc(userDocRef, {
+                                last_login: dateTimestamp,
+                                updated_at: dateTimestamp
+                            })
                         }
                     })
                 } catch(error) {
                     console.log(error)
+                    show.setIsLoadingGlobal(false)
                     toast.error('Erro ao criar a conta')
                 }
             }
             const loginUser = async (email: string, passwordUser: string) => {
+                show.setIsLoadingGlobal(true)
                 const password = encryptedPassword(passwordUser)
                 try {
+                    let dateTimestamp = Timestamp.fromDate(new Date())
                     let q = query(collection(firestore, "Users"), where("email", "==", email), where("password", "==", password));
                     const querySnapshot = await getDocs(q);
                     const usersDoc: any = []
@@ -134,19 +171,36 @@
                         authentication.setUser(usersDoc[0])
                         authentication.setUserId(usersDoc[0].id)
                         let date = new Date()
-                        generateTokenApi(authentication.user.name, authentication.user.id, authentication.user.email, date).then((response) => {
+                        generateTokenApi(authentication.user.name, authentication.user.id, authentication.user.email, "user", date).then(async (response) => {
                             if(response.status) {
                                 signInWithCustomToken(auth, response.token)
+                                show.setIsLoadingGlobal(false)
                                 toast.success('Sucesso ao logar')
                                 clearLogin.value = true
                                 isActive.value = false
+                                isActiveRegister.value = false
+                                addInteraction({
+                                    text: `O usuário ${authentication.user.name} efetuou o login`,
+                                    user_id: authentication.user.id,
+                                    barber_id: "",
+                                    is_master: false,
+                                })
+                                const userDocRef = doc(firestore, "Users", authentication.user.id); // Referência ao documento "config"
+                                await updateDoc(userDocRef, {
+                                    last_login: dateTimestamp,
+                                    updated_at: dateTimestamp
+                                })
+                            } else {
+                                console.log(response)
                             }
                         })
                     } else {
+                        show.setIsLoadingGlobal(false)
                         toast.error('O email ou a senha está errado')
                     }
                 } catch(error) {
                     console.log(error)
+                    show.setIsLoadingGlobal(false)
                     toast.error('Erro ao entrar na conta')
                 }
             }
@@ -160,18 +214,19 @@
                     toast.error('Erro ao sair da conta')
                 })
             }
-            const generateTokenApi = async (userName: string, userId: string, userEmail: string, date: Date) => {
+            const generateTokenApi = async (userName: string, userId: string, userEmail: string, type: string, date: Date) => {
                 let formdataApi = {
                     name: userName,
                     id: userId,
                     email: userEmail,
                     dateLogin: date,
+                    type: type,
                     keyAuth: secretKeyAuth
                 }
                 for (const [key, value] of Object.entries(formdataApi) as [string, any][]) {
                     params.append(key, value);
                 }
-                return await $fetch(`https://create-token-jwt-barber.onrender.com/token/custom-token-firebase`, {
+                return await $fetch(`https://create-token-jwt-barber.onrender.com/token/custom-token-firebase-auth`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',

@@ -1,20 +1,17 @@
 <script lang="ts">
-import { useTheme } from '@/stores/theme';
 export default {
   setup() {
-    const theme = useTheme()
     return {
-      theme
     }
   }
 }
 </script>
 <template>
     <div class="lds-ellipsis">
-      <div :class="`bg-neutral-700`"></div>
-      <div :class="`bg-neutral-700`"></div>
-      <div :class="`bg-neutral-700`"></div>
-      <div :class="`bg-neutral-700`"></div>
+      <div :class="`bg-white`"></div>
+      <div :class="`bg-white`"></div>
+      <div :class="`bg-white`"></div>
+      <div :class="`bg-white`"></div>
     </div>
 </template>
 

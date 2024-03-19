@@ -2,15 +2,18 @@
     import { getAuth, signInWithCustomToken, signOut } from "firebase/auth";
     import { collection, getDocs, query, where, doc, getDoc, Timestamp, updateDoc, addDoc, orderBy, arrayUnion } from 'firebase/firestore';
     import { useToast } from 'vue-toastification';
-    import { useFirebase } from '@/composables/useFirebase';
-    import { useData } from '@/stores/data';
-    import { useAuthentication } from '@/stores/authentication';
+    import { useFirebase } from '../composables/useFirebase';
+    import { useData } from '../stores/data';
+    import { useAuthentication } from '../stores/authentication';
     import CryptoJS from 'crypto-js';
+    import { useCreate } from '../composables/createFirebase';
+    import { useShow } from '../stores/show';
 
     export default {
         setup() {
             const data: any = useData()
             const authentication: any = useAuthentication()
+            const show = useShow()
             // para mexer com as tags heads
             useHead({
                 title: `Agendamentos - Barberia do Bronxs`,
@@ -23,6 +26,7 @@
             })
             // usando o firestore do firebase
             const { firestore, auth } = useFirebase()
+            const { addInteraction, addWarning } = useCreate()
             const router = useRouter()
             const toast = useToast()
             const config = ref<any>()
@@ -82,6 +86,7 @@
                 loading.value = false
             }
             const cancelledSchedule = async() => {
+                show.setIsLoadingGlobal(true)
                 let dateTimestamp = Timestamp.fromDate(new Date())
                 try {
                     hourSelected.value.times_ids.forEach(async (time: any, indice: any) => {
@@ -108,10 +113,39 @@
                         cancelled_at: dateTimestamp,
                         updated_at: dateTimestamp
                     })
+                    if(anomymousCode.value) {
+                        const codeDocRef = doc(firestore, "Code_Schedule", anomymousCode.value);
+                        const codeDocSnapshot = await getDoc(codeDocRef); // Obtém o snapshot do documento
+
+                        if (codeDocSnapshot.exists()) {
+                            addInteraction({
+                                text: `A pessoa ${codeDocSnapshot.data().name} efetuou o cancelamento do agendamento: ${hourSelected.value.name} - ${hourSelected.value.date}`,
+                                user_id: anomymousCode.value,
+                                barber_id: "",
+                                is_master: false,
+                            })
+                        }
+                    } else {
+                        addInteraction({
+                            text: `O usuário ${authentication.user.name} efetuou o cancelamento do agendamento: ${hourSelected.value.name} - ${hourSelected.value.date}`,
+                            user_id: authentication.userId,
+                            barber_id: "",
+                            is_master: false,
+                        })
+                    }
+                    addWarning({
+                        type: "update",
+                        text: `O agendamento ${hourSelected.value.name} - ${hourSelected.value.date} foi cancelado pelo próprio autor`,
+                        user_id: authentication.userId ? authentication.userId : anomymousCode.value,
+                        barber_id: "",
+                        is_master: false,
+                    })
+                    show.setIsLoadingGlobal(false)
                     toast.success("Cancelado com sucesso!");
                     getSchedules()
                     isActive.value = false
                 } catch (error) {
+                    show.setIsLoadingGlobal(false)
                     console.error("Erro ao cancelar o documento:", error);
                     toast.error("Erro ao cancelar!")
                 }
@@ -141,6 +175,7 @@
                 getSchedules()
             }
             const createUser = async (name: string, email: string, passwordUser: string, phone?: string) => {
+                show.setIsLoadingGlobal(true)
                 const { password, passwordHash }: any = generatePassword(passwordUser)
                 let dateTimestamp = Timestamp.fromDate(new Date())
                 try {
@@ -162,20 +197,34 @@
                     })
                     toast.success('Sucesso ao criar a conta')
                     let date = new Date()
-                    generateTokenApi(name, userDoc.id, email, date).then((response) => {
+                    generateTokenApi(name, userDoc.id, email, date).then(async (response) => {
                         if(response.status) {
                             signInWithCustomToken(auth, response.token)
+                            const userDocRef = doc(firestore, "Users", userDoc.id); // Referência ao documento "config"
+                            const userDocSnapshot = await getDoc(userDocRef);
+                            authentication.setUser({
+                                id: userDocSnapshot.id,
+                                ...userDocSnapshot.data()
+                            })
+                            authentication.setUserId(userDocSnapshot.id)
+                            show.setIsLoadingGlobal(false)
                             toast.success('Sucesso ao logar')
                             clearRegister.value = true
                             isActiveRegister.value = false
+                            await updateDoc(userDocRef, {
+                                last_login: dateTimestamp,
+                                updated_at: dateTimestamp
+                            })
                         }
                     })
                 } catch(error) {
                     console.log(error)
+                    show.setIsLoadingGlobal(false)
                     toast.error('Erro ao criar a conta')
                 }
             }
             const loginUser = async (email: string, passwordUser: string) => {
+                show.setIsLoadingGlobal(true)
                 const password = encryptedPassword(passwordUser)
                 try {
                     let q = query(collection(firestore, "Users"), where("email", "==", email), where("password", "==", password));
@@ -194,6 +243,7 @@
                         generateTokenApi(authentication.user.name, authentication.user.id, authentication.user.email, date).then((response) => {
                             if(response.status) {
                                 signInWithCustomToken(auth, response.token)
+                                show.setIsLoadingGlobal(false)
                                 toast.success('Sucesso ao logar')
                                 clearLogin.value = true
                                 isActiveLogin.value = false
@@ -201,22 +251,33 @@
                             }
                         })
                     } else {
+                        show.setIsLoadingGlobal(false)
                         toast.error('O email ou a senha está errado')
                     }
                 } catch(error) {
                     console.log(error)
+                    show.setIsLoadingGlobal(false)
                     toast.error('Erro ao entrar na conta')
                 }
             }
             const logout = async () => {
+                show.setIsLoadingGlobal(true)
                 signOut(auth).then(() => {
+                    addInteraction({
+                        text: `O usuário ${authentication.user.name} saiu da conta`,
+                        user_id: authentication.userId,
+                        barber_id: "",
+                        is_master: false,
+                    })
                     authentication.setUserId('')
                     authentication.setUser({})
+                    show.setIsLoadingGlobal(false)
                     toast.success('Sucesso ao sair da conta')
                     loadedSchedules.value = false
                     schedules.value = []
                 }).catch((error) => {
                     console.log(error)
+                    show.setIsLoadingGlobal(false)
                     toast.error('Erro ao sair da conta')
                 })
             }

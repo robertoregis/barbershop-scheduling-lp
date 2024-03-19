@@ -1,8 +1,10 @@
 <script lang="ts">
     import { getCountFromServer, getDocs, collection, query, orderBy, Timestamp, doc, updateDoc } from 'firebase/firestore'
-    import { useFirebase } from '@/composables/useFirebase';
-    import { convertDate } from '@/composables/date';
+    import { useFirebase } from '../../composables/useFirebase';
+    import { convertDate } from '../../composables/date';
     import { useToast } from 'vue-toastification';
+    import { useShow } from '../../stores/show';
+    import { useCreate } from '../../composables/createFirebase';
 
     export default {
         props: {
@@ -29,11 +31,13 @@
             const month = toRef(props, 'month')
             const day = toRef(props, 'day')
             const { firestore } = useFirebase()
+            const { addInteraction, addWarning } = useCreate()
             const hours = ref<any>([])
             const date = ref<any>(new Date())
             const isActive = ref<boolean>(false)
             const hourSelected = ref<any>()
             const toast = useToast()
+            const show = useShow()
 
             const getHours = async () => {
                 const q = query(collection(firestore, "Schedules", schedule.value.id, "hours"), orderBy("created_at", "asc"));
@@ -54,6 +58,19 @@
                         ...hourSelected.value,
                         updated_at: dateTimestamp,
                     });
+                    /*addInteraction({
+                        text: `O usuário ${name} efetuou o cadastro`,
+                        user_id: userDoc.id,
+                        barber_id: "",
+                        is_master: false,
+                    })
+                    addWarning({
+                        type: "update",
+                        text: `Foi feito o cadastro do usuário ${name}`,
+                        user_id: userDoc.id,
+                        barber_id: "",
+                        is_master: false,
+                    })*/
                     toast.success("Atualizado com sucesso!");
                     isActive.value = false
                 } catch (error) {

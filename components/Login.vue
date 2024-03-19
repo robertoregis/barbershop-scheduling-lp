@@ -30,6 +30,7 @@
             const clearLogin = toRef(props, 'clearLogin')
             const openRegister = toRef(props, 'openRegister')
             const optionsPhone = { mask: '(##) #####-####' }
+            const showPassword = ref<boolean>(false)
 
             const { handleSubmit, handleReset } = useForm({
                 validationSchema: {
@@ -67,7 +68,8 @@
                 closeDialogLogin,
                 submit,
                 handleReset,
-                openRegister
+                openRegister,
+                showPassword
             }
         }
     }
@@ -95,7 +97,9 @@
                         <div class="col-span-1 mt-2">
                             <v-text-field
                             label="Senha"
-                            type="input"
+                            :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                            :type="showPassword ? 'text' : 'password'"
+                            @click:append="showPassword = !showPassword"
                             clearable
                             base-color="indigo-darken-3"
                             color="indigo-darken-3"

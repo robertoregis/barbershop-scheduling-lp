@@ -1,5 +1,6 @@
 <script lang="ts">
     import { useField, useForm } from 'vee-validate';
+
     export default {
         props: {
             isActiveRegister: {
@@ -30,6 +31,7 @@
             const clearRegister = toRef(props, 'clearRegister')
             const openLogin = toRef(props, 'openLogin')
             const optionsPhone = { mask: '(##) #####-####' }
+            const showPassword = ref<boolean>(false)
 
             const { handleSubmit, handleReset } = useForm({
                 validationSchema: {
@@ -78,7 +80,8 @@
                 closeDialogRegister,
                 submit,
                 handleReset,
-                openLogin
+                openLogin,
+                showPassword
             }
         }
     }
@@ -118,7 +121,9 @@
                             <v-text-field
                             hint="Escolha uma senha segura"
                             label="Senha"
-                            type="input"
+                            :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                            :type="showPassword ? 'text' : 'password'"
+                            @click:append="showPassword = !showPassword"
                             clearable
                             base-color="indigo-darken-3"
                             color="indigo-darken-3"
