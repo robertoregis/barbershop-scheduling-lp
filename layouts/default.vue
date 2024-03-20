@@ -69,8 +69,6 @@
   <LoadingGlobal v-if="show.isLoadingGlobal" />
 </template>
 
-<style lang="scss" scoped>
-body {
-        overflow: hidden;
-    }
+<style lang="scss">
+html { overflow-y: auto }
 </style>
