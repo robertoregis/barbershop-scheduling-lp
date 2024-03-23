@@ -145,10 +145,10 @@
                             v-maska:[optionsPhone]
                             ></v-text-field>
                         </div>
-                        <div class="col-span-1 mt-3">
-                            <div class="flex items-center">
-                                <span class="text-sm mr-2">Já tem conta?</span>
-                                <v-btn @click="openLogin()" color="indigo-darken-3" size="small">Login</v-btn>
+                        <div class="col-span-1 mt-2">
+                            <div class="flex flex-col md:flex-row items-start md:items-center">
+                                <span class="text-sm md:mr-2 my-1">Já tem conta?</span>
+                                <v-btn @click="openLogin()" color="indigo-darken-3" class="my-1" size="small">Login</v-btn>
                             </div>
                         </div>
                     </div>

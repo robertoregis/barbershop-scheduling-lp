@@ -108,10 +108,10 @@
                             :error-messages="password.errorMessage.value"
                             ></v-text-field>
                         </div>
-                        <div class="col-span-1 mt-3">
-                            <div class="flex items-center">
-                                <span class="text-sm mr-2">Ainda não tem conta?</span>
-                                <v-btn @click="openRegister()" color="indigo-darken-3" size="small">Cadastre-se</v-btn>
+                        <div class="col-span-1 mt-2">
+                            <div class="flex flex-col md:flex-row items-start md:items-center">
+                                <span class="text-sm md:mr-2 my-1">Ainda não tem conta?</span>
+                                <v-btn @click="openRegister()" color="indigo-darken-3" class="my-1" size="small">Cadastre-se</v-btn>
                             </div>
                         </div>
                     </div>

@@ -388,11 +388,11 @@
                     <h1 v-if="authentication.userId" class="mb-0 text-lg md:text-xl font-weight-500">Seja bem-vindo, <span class="text-xl md:text-2xl font-weight-600">{{ authentication.user.name }}</span></h1>
                     <h1 v-else class=" mb-0 text-lg md:text-xl font-weight-500">Seja bem-vindo!</h1>
                 </div>
-                <div class="col-span-1 mt-2">
-                    <div class="flex items-center">
-                        <v-btn @click="logout()" color="red-darken-3" v-if="authentication.userId">Sair</v-btn>
-                        <v-btn @click="isActive = true" color="indigo-darken-3" v-else>Entrar</v-btn>
-                        <v-btn to="/agendamentos" color="blue-grey-darken-2" class="ml-2">Ver agendamentos</v-btn>
+                <div class="col-span-1 mt-1">
+                    <div class="flex flex-col md:flex-row items-start md:items-center">
+                        <v-btn @click="logout()" color="red-darken-3" class="my-1" v-if="authentication.userId">Sair</v-btn>
+                        <v-btn @click="isActive = true" color="indigo-darken-3" class="my-1" v-else>Entrar</v-btn>
+                        <v-btn to="/agendamentos" color="blue-grey-darken-2" class="md:ml-2 my-1">Ver agendamentos</v-btn>
                     </div>
                 </div>
                 <div class="col-span-1 mt-4">
@@ -440,7 +440,7 @@
                                     </div>
                                     <span>Agora escolha um dos barbeiros:</span>
                                 </div>
-                                <div class="flex items-center mt-2">
+                                <div v-if="barbers.length > 0" class="flex items-center mt-2">
                                     <v-btn-toggle
                                         v-model="barberSelected"
                                         rounded="0"
@@ -454,6 +454,9 @@
                                             </v-btn>
                                         </template>
                                     </v-btn-toggle>
+                                </div>
+                                <div v-else class="col-span-1 mt-4">
+                                    <MasterNoResult title="Não tem barbeiros" padding="p-1" />
                                 </div>
                             </div>
                         </div>
