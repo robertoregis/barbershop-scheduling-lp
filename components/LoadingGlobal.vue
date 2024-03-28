@@ -1,5 +1,5 @@
 <template>
-    <div class="fixed position-center-y position-center-x" style="z-index: 1000000">
+    <div class="fixed position-center" style="z-index: 1000000">
         <div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
     </div>
 </template>
@@ -15,6 +15,8 @@ export default {
         position: relative;
         width: 80px;
         height: 80px;
+        //background: rgba(250, 250, 250, 0.3);
+        //border-radius: 50%;
     }
     .lds-spinner div {
     transform-origin: 40px 40px;

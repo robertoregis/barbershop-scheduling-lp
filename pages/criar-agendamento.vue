@@ -196,6 +196,7 @@
                             date: hourSchedule.value.date,
                             user_id: authentication.userId,
                             user_name: authentication.user.name,
+                            user_email: authentication.user.email,
                             anomymous_code: null,
                             anomymous_code_id: null,
                             hour_start: timesSelectedAfterHairstyle.value[0].hour_start,
@@ -305,6 +306,7 @@
                                 date: hourSchedule.value.date,
                                 user_id: null,
                                 user_name: name.value,
+                                user_email: null,
                                 anomymous_code: code,
                                 anomymous_code_id: codeDocRef.id,
                                 hour_start: timesSelectedAfterHairstyle.value[0].hour_start,
@@ -343,6 +345,7 @@
                                 barber_id: "",
                                 is_master: false,
                             })
+                            show.setIsLoadingGlobal(false)
                             isActiveCode.value = true
                         } else {
                             show.setIsLoadingGlobal(false)
@@ -356,7 +359,6 @@
                 }
             }
             const nextCode = () => {
-                show.setIsLoadingGlobal(false)
                 isActiveCode.value = false
                 toast.success("Agendado com sucesso!");
                 router.push('/agendamentos')
@@ -506,37 +508,37 @@
     </v-dialog>
     <v-dialog width="600" v-model="isActiveSchedule">
     <template v-slot:default="{ isActiveSchedule }">
-        <v-card title="Confira os dados do agendamento">
+        <v-card title="Confira os dados:">
         <v-card-text>
             <div class="grid grid-cols-1">
                 <div class="col-span-1 mt-2">
                     <div class="flex flex-col">
                         <div class="flex flex-col mt-1">
-                            <span class="font-weight-600 mr-2">Corte de cabelo:</span>
+                            <span class="font-weight-600">Corte de cabelo:</span>
                             <div class="flex items-center mt-1">
                                 <v-avatar :image="hairstyleSelected.image_url" size="44" rounded="sm"></v-avatar>
                                 <span class="ml-2 font-weight-400 text-[1rem]">{{ hairstyleSelected.name }}</span>
                             </div>
                         </div>
-                        <div class="flex items-center mt-1">
-                            <span class="font-weight-500 mr-2">Horário inicial:</span>
-                            <span class="font-weight-400 text-[1rem]">{{ timesSelectedAfterHairstyle[0].hour_start }}</span>
+                        <div class="flex flex-col md:flex-row items-start md:items-center">
+                            <span class="font-weight-500 md:mr-2 mt-1">Horário inicial:</span>
+                            <span class="font-weight-400 text-[1rem] mt-1">{{ timesSelectedAfterHairstyle[0].hour_start }}</span>
                         </div>
-                        <div class="flex items-center mt-1">
-                            <span class="font-weight-500 mr-2">Horário final:</span>
-                            <span class="font-weight-400 text-[1rem]">{{ timesSelectedAfterHairstyle[timesSelectedAfterHairstyle.length - 1].hour_end }}</span>
+                        <div class="flex flex-col md:flex-row items-start md:items-center">
+                            <span class="font-weight-500 md:mr-2 mt-1">Horário final:</span>
+                            <span class="font-weight-400 text-[1rem] mt-1">{{ timesSelectedAfterHairstyle[timesSelectedAfterHairstyle.length - 1].hour_end }}</span>
                         </div>
-                        <div class="flex items-center mt-1">
-                            <span class="font-weight-500 mr-2">Intervalo:</span>
-                            <span class="font-weight-400 text-[1rem]">{{ timesSelectedAfterHairstyle[0].hour_start }} - {{ timesSelectedAfterHairstyle[timesSelectedAfterHairstyle.length - 1].hour_end }}</span>
+                        <div class="flex flex-col md:flex-row items-start md:items-center">
+                            <span class="font-weight-500 md:mr-2 mt-1">Intervalo:</span>
+                            <span class="font-weight-400 text-[1rem] mt-1">{{ timesSelectedAfterHairstyle[0].hour_start }} - {{ timesSelectedAfterHairstyle[timesSelectedAfterHairstyle.length - 1].hour_end }}</span>
                         </div>
-                        <div class="flex items-center mt-1">
-                            <span class="font-weight-500 mr-2">Data:</span>
-                            <span class="font-weight-400 text-[1rem]">{{ hourSchedule.date }}</span>
+                        <div class="flex flex-col md:flex-row items-start md:items-center">
+                            <span class="font-weight-500 md:mr-2 mt-1">Data:</span>
+                            <span class="font-weight-400 text-[1rem] mt-1">{{ hourSchedule.date }}</span>
                         </div>
-                        <div class="flex items-center mt-1">
-                            <span class="font-weight-500 mr-2">Barbeiro:</span>
-                            <span class="font-weight-400 text-[1rem]">{{ hourSchedule.barber_name }}</span>
+                        <div class="flex flex-col md:flex-row items-start md:items-center">
+                            <span class="font-weight-500 md:mr-2 mt-1">Barbeiro:</span>
+                            <span class="font-weight-400 text-[1rem] mt-1">{{ hourSchedule.barber_name }}</span>
                         </div>
                     </div>
                 </div>
@@ -639,9 +641,9 @@
                             <span class="font-weight-600 mr-2">Contadores:</span>
                             <span>{{ getCounters(hourSchedule.times_active, timeSelected.order) }}</span>
                         </div>-->
-                        <div v-if="timeSelected.updated_at" class="flex items-center mt-1">
-                            <span class="font-weight-600 mr-2">Última atualização:</span>
-                            <span>{{ convertDateFirestore(timeSelected.updated_at) }}</span>
+                        <div v-if="timeSelected.updated_at" class="flex flex-col md:flex-row items-start md:items-center">
+                            <span class="font-weight-600 md:mr-2 mt-1">Última atualização:</span>
+                            <span class="mt-1">{{ convertDateFirestore(timeSelected.updated_at) }}</span>
                         </div>
                     </div>
                 </div>

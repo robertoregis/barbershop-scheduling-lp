@@ -60,13 +60,13 @@
 </script>
 
 <template>
-  <div class="bg-neutral-700 min-h-[100%]">
+  <div class="bg-neutral-700 min-h-[100%] relative">
     <slot v-if="!loading" />
     <div v-else class="h-screen w-screen flex justify-center items-center">
       <Loading />
     </div>
+    <LoadingGlobal v-if="show.isLoadingGlobal" />
   </div>
-  <LoadingGlobal v-if="show.isLoadingGlobal" />
 </template>
 
 <style lang="scss">

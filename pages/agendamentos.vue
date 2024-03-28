@@ -417,19 +417,19 @@
                         <div v-else class="flex items-center bg-green-800 text-white justify-center px-3 py-1 rounded">
                             <span class="font-weight-600">Está agendado</span>
                         </div>
-                        <div class="flex items-center mt-1">
+                        <div class="flex flex-col md:flex-row items-start md:items-center mt-1">
                             <span class="font-weight-600 mr-2">Cliente:</span>
                             <span class="text-lg">{{ hourSelected.user_name }}</span>
                         </div>
-                        <div v-if="hourSelected.is_cancelled" class="flex items-center mt-1">
+                        <div v-if="hourSelected.is_cancelled" class="flex flex-col md:flex-row items-start md:items-center mt-1">
                             <span class="font-weight-600 mr-2">Data de cancelamento:</span>
                             <span>{{ convertDateFirestore(hourSelected.scheduled_at) }}</span>
                         </div>
-                        <div v-else class="flex items-center mt-1">
+                        <div v-else class="flex flex-col md:flex-row items-start md:items-center mt-1">
                             <span class="font-weight-600 mr-2">Data de agendamento:</span>
                             <span>{{ convertDateFirestore(hourSelected.scheduled_at) }}</span>
                         </div>
-                        <div class="flex items-center mt-1">
+                        <div class="flex flex-col md:flex-row items-start md:items-center mt-1">
                             <span class="font-weight-600 mr-2">Barbeiro:</span>
                             <span class="text-lg">{{ hourSelected.barber_name }}</span>
                         </div>
@@ -437,11 +437,11 @@
                 </div>
                 <div class="col-span-1 mt-2">
                     <div class="flex flex-col items-start">
-                        <div class="flex items-center">
+                        <div class="flex flex-col md:flex-row items-start md:items-center">
                             <span class="font-weight-600 mr-2">Data:</span>
                             <span>{{ hourSelected.date }}</span>
                         </div>
-                        <div v-if="hourSelected.updated_at" class="flex items-center mt-1">
+                        <div v-if="hourSelected.updated_at" class="flex flex-col md:flex-row items-start md:items-center mt-1">
                             <span class="font-weight-600 mr-2">Última atualização:</span>
                             <span>{{ convertDateFirestore(hourSelected.updated_at) }}</span>
                         </div>
