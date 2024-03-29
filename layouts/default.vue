@@ -50,7 +50,6 @@
       })
 
       return {
-        //changeNav,
         windowWidth,
         loading,
         show
