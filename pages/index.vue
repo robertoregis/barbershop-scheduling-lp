@@ -226,7 +226,7 @@
                 for (const [key, value] of Object.entries(formdataApi) as [string, any][]) {
                     params.append(key, value);
                 }
-                return await $fetch(`https://create-token-jwt-barber.onrender.com/token/custom-token-firebase-auth`, {
+                return await $fetch(`https://boot-whats-fcwv.onrender.com/token/custom-token-firebase-auth`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
