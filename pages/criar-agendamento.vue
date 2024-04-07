@@ -8,29 +8,31 @@
     import { useCreate } from '../composables/createFirebase';
     import { useShow } from '../stores/show';
 
+    import { useRouter } from 'vue-router';
+    import { computed, onMounted, ref } from 'vue';
+
     export default {
         setup() {
             const data: any = useData()
             const authentication: any = useAuthentication()
             const show = useShow()
-            // para mexer com as tags heads
             useHead({
-                title: `Login do Painel Administrativo (indicaPix)`,
+                title: `Barbearia do Bronxs`,
                 meta: [
                 {
                     name: 'description',
-                    content: 'Faça login no painel administrativo da IndicaPix, a empresa que conecta empresas e embaixadores para criar leads de alta qualidade.'
+                    content: 'Site oficial para agendamentos na Barbearia do Bronxs'
                 }
                 ]
             })
             // usando o firestore do firebase
             const { firestore } = useFirebase()
-            const { addInteraction, addWarning } = useCreate()
+            const { addInteraction, addWarning, updateInfo } = useCreate()
             const router = useRouter()
             const toast = useToast()
             const config = ref<any>()
             const loading = ref<boolean>(true)
-            const hourSchedule = ref<any>({})
+            const daySchedule = ref<any>({})
             const times = ref<any>([])
             const hairstyles = ref<any>([])
             const hairstylesSelected = ref<any>([])
@@ -44,6 +46,7 @@
             const timesSelected = ref<any>([])
             const timesSelectedAfterHairstyle = ref<any>([])
             const countsSelected = ref<any>([])
+            const isOpen = ref<boolean>(true)
 
             const name = ref<any>(null)
 
@@ -108,23 +111,25 @@
                 let dateFormatted = dateSplit[0] + '-' + dateSplit[1]
                 const q = query(collection(firestore, "Days"), where("date", "==", dateFormatted), where("barber_id", "==", data.data_schedule.barber.id));
                 const querySnapshot = await getDocs(q);
-                let hourSchedulesDoc: any = []
+                let daySchedulesDoc: any = []
                 querySnapshot.forEach((doc: any) => {
-                    hourSchedulesDoc.push({
+                    daySchedulesDoc.push({
                         id: doc.id,
                         ...doc.data()
                     })
                 });
-                if(hourSchedulesDoc.length > 0) {
-                    hourSchedule.value = hourSchedulesDoc[0]
-                    getTimes()
+                if(daySchedulesDoc.length > 0) {
+                    daySchedule.value = daySchedulesDoc[0]
+                    if(daySchedule.value.is_open && daySchedule.value.is_active) {
+                        getTimes()
+                    }
                 }
 
                 loading.value = false
             }
             const getTimes = async () => {
-                console.log(hourSchedule.value)
-                const q = query(collection(firestore, "Days", hourSchedule.value.id, "times"), orderBy("created_at", "asc"));
+                //console.log(daySchedule.value)
+                const q = query(collection(firestore, "Days", daySchedule.value.id, "times"), orderBy("created_at", "asc"));
                 const querySnapshot = await getDocs(q);
                 times.value = []
                 querySnapshot.forEach((doc: any) => {
@@ -138,7 +143,7 @@
             const getHairstyles = () => {
                 let array: any = []
                 let arrayHairStyles: any = []
-                let counts: any = getCounters(hourSchedule.value.times_active, timeSelected.value.order)
+                let counts: any = getCounters(daySchedule.value.times_active, timeSelected.value.order)
                 //console.log(counts)
                 counts.counts.forEach((count: any) => {
                     times.value.forEach((time: any) => {
@@ -171,7 +176,7 @@
                         const timesIds: any = []
                         timesSelectedAfterHairstyle.value.forEach(async (time: any, indice: any) => {
                             timesIds.push(time.id)
-                            const timeDocRef = doc(firestore, "Days", hourSchedule.value.id, "times", time.id);
+                            const timeDocRef = doc(firestore, "Days", daySchedule.value.id, "times", time.id);
                             await updateDoc(timeDocRef, {
                                 is_scheduled: true,
                                 scheduled_at: dateTimestamp,
@@ -180,20 +185,20 @@
                                 updated_at: dateTimestamp,
                             });
                         })
-                        const newTimes = hourSchedule.value.times_active.filter((count: any) => !countsSelected.value.includes(count));
-                        const dayDocRef = doc(firestore, "Days", hourSchedule.value.id);
+                        const newTimes = daySchedule.value.times_active.filter((count: any) => !countsSelected.value.includes(count));
+                        const dayDocRef = doc(firestore, "Days", daySchedule.value.id);
                         await updateDoc(dayDocRef, {
                             times_active: newTimes,
                             updated_at: dateTimestamp,
                         });
-                        let month = Number(hourSchedule.value.month) - 1
+                        let month = Number(daySchedule.value.month) - 1
                         let hour = timesSelectedAfterHairstyle.value[0].hour_start.slice(0, 2)
-                        let dateTimestampScheduled = Timestamp.fromDate(new Date(hourSchedule.value.year, month, hourSchedule.value.day, hour, 0, 0))
+                        let dateTimestampScheduled = Timestamp.fromDate(new Date(daySchedule.value.year, month, daySchedule.value.day, hour, 0, 0))
                         const scheduleDocRef = await addDoc(collection(firestore, "Schedules"), {
                             name: `${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end}`,
                             duration: `${hairstyleSelected.value.order * 30} minutos`,
                             hour: `${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end}`,
-                            date: hourSchedule.value.date,
+                            date: daySchedule.value.date,
                             user_id: authentication.userId,
                             user_name: authentication.user.name,
                             user_email: authentication.user.email,
@@ -203,6 +208,9 @@
                             hour_end: timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end,
                             is_active: true,
                             is_cancelled: false,
+                            is_closed: false,
+                            is_cut: false,
+                            is_finished: false,
                             cancelled_at: '',
                             created_at: dateTimestamp,
                             updated_at: dateTimestamp,
@@ -210,29 +218,39 @@
                             count: hairstyleSelected.value.order,
                             counts: countsSelected.value,
                             times_ids: timesIds,
-                            day_id: hourSchedule.value.id,
-                            barber_id: hourSchedule.value.barber_id,
-                            barber_name: hourSchedule.value.barber_name
+                            day_id: daySchedule.value.id,
+                            barber_id: daySchedule.value.barber_id,
+                            barber_name: daySchedule.value.barber_name,
+                            hairstyle_name: hairstyleSelected.value.name,
+                            hairstyle_duration: hairstyleSelected.value.duration_formatted,
+                            hairstyle_price: hairstyleSelected.value.price_formatted,
+                            hairstyle_id: hairstyleSelected.value.id,
+                            hairstyle_image: hairstyleSelected.value.image_url
                         })
                         if(scheduleDocRef) {
                             timesSelectedAfterHairstyle.value.forEach(async (time: any, indice: any) => {
-                                const timeDocRef = doc(firestore, "Days", hourSchedule.value.id, "times", time.id);
+                                const timeDocRef = doc(firestore, "Days", daySchedule.value.id, "times", time.id);
                                 await updateDoc(timeDocRef, {
                                     schedule_id: scheduleDocRef.id
                                 });
                             })
                             addInteraction({
-                                text: `O usuário ${authentication.user.name} efetuou o agendamento: ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${hourSchedule.value.date}`,
+                                text: `O usuário ${authentication.user.name} efetuou o agendamento: ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${daySchedule.value.date}`,
                                 user_id: authentication.userId,
                                 barber_id: "",
                                 is_master: false,
                             })
                             addWarning({
                                 type: "update",
-                                text: `O agendamento ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${hourSchedule.value.date} foi feito pelo usuário ${authentication.user.name}`,
+                                text: `O agendamento ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${daySchedule.value.date} foi feito pelo usuário ${authentication.user.name}`,
                                 user_id: authentication.userId,
                                 barber_id: "",
                                 is_master: false,
+                            })
+                            updateInfo({
+                                interactions: 1,
+                                warnings: 1,
+                                schedules: 1
                             })
                             show.setIsLoadingGlobal(false)
                             toast.success("Agendado com sucesso!");
@@ -272,7 +290,7 @@
                             user_name: name.value,
                             created_at: dateTimestamp,
                             is_active: true,
-                            schedule_id: hourSchedule.value.id,
+                            schedule_id: daySchedule.value.id,
                             schedule_hour_id: timeSelected.value.id
                         })
                         if(codeDocRef) {
@@ -280,7 +298,7 @@
                             const timesIds: any = []
                             timesSelectedAfterHairstyle.value.forEach(async (time: any, indice: any) => {
                                 timesIds.push(time.id)
-                                const timeDocRef = doc(firestore, "Days", hourSchedule.value.id, "times", time.id);
+                                const timeDocRef = doc(firestore, "Days", daySchedule.value.id, "times", time.id);
                                 await updateDoc(timeDocRef, {
                                     is_scheduled: true,
                                     user_name: name.value,
@@ -290,20 +308,20 @@
                                     updated_at: dateTimestamp,
                                 });
                             })
-                            const newTimes = hourSchedule.value.times_active.filter((count: any) => !timesSelectedAfterHairstyle.value.includes(count));
-                            const dayDocRef = doc(firestore, "Days", hourSchedule.value.id);
+                            const newTimes = daySchedule.value.times_active.filter((count: any) => !timesSelectedAfterHairstyle.value.includes(count));
+                            const dayDocRef = doc(firestore, "Days", daySchedule.value.id);
                             await updateDoc(dayDocRef, {
                                 times_active: newTimes,
                                 updated_at: dateTimestamp,
                             });
-                            let month = Number(hourSchedule.value.month) - 1
+                            let month = Number(daySchedule.value.month) - 1
                             let hour = timesSelectedAfterHairstyle.value[0].hour_start.slice(0, 2)
-                            let dateTimestampScheduled = Timestamp.fromDate(new Date(hourSchedule.value.year, month, hourSchedule.value.day, hour, 0, 0))
+                            let dateTimestampScheduled = Timestamp.fromDate(new Date(daySchedule.value.year, month, daySchedule.value.day, hour, 0, 0))
                             const scheduleDocRef = await addDoc(collection(firestore, "Schedules"), {
                                 name: `${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end}`,
                                 duration: `${hairstyleSelected.value.order * 30} minutos`,
                                 hour: `${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end}`,
-                                date: hourSchedule.value.date,
+                                date: daySchedule.value.date,
                                 user_id: null,
                                 user_name: name.value,
                                 user_email: null,
@@ -313,6 +331,9 @@
                                 hour_end: timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end,
                                 is_active: true,
                                 is_cancelled: false,
+                                is_closed: false,
+                                is_cut: false,
+                                is_finished: false,
                                 cancelled_at: '',
                                 created_at: dateTimestamp,
                                 updated_at: dateTimestamp,
@@ -320,12 +341,17 @@
                                 count: hairstyleSelected.value.order,
                                 counts: countsSelected.value,
                                 times_ids: timesIds,
-                                day_id: hourSchedule.value.id,
-                                barber_id: hourSchedule.value.barber_id,
-                                barber_name: hourSchedule.value.barber_name
+                                day_id: daySchedule.value.id,
+                                barber_id: daySchedule.value.barber_id,
+                                barber_name: daySchedule.value.barber_name,
+                                hairstyle_name: hairstyleSelected.value.name,
+                                hairstyle_duration: hairstyleSelected.value.duration_formatted,
+                                hairstyle_price: hairstyleSelected.value.price_formatted,
+                                hairstyle_id: hairstyleSelected.value.id,
+                                hairstyle_image: hairstyleSelected.value.image_url
                             })
                             timesSelectedAfterHairstyle.value.forEach(async (time: any, indice: any) => {
-                                const timeDocRef = doc(firestore, "Days", hourSchedule.value.id, "times", time.id);
+                                const timeDocRef = doc(firestore, "Days", daySchedule.value.id, "times", time.id);
                                 await updateDoc(timeDocRef, {
                                     schedule_id: scheduleDocRef.id
                                 });
@@ -333,17 +359,22 @@
                             //////
                             data.setAnomynousCode(code)
                             addInteraction({
-                                text: `A pessoa ${name.value} efetuou o agendamento: ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${hourSchedule.value.date}`,
+                                text: `A pessoa ${name.value} efetuou o agendamento: ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${daySchedule.value.date}`,
                                 user_id: code,
                                 barber_id: "",
                                 is_master: false,
                             })
                             addWarning({
                                 type: "update",
-                                text: `O agendamento ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${hourSchedule.value.date} foi feito pela pessoa ${name.value}`,
+                                text: `O agendamento ${timesSelectedAfterHairstyle.value[0].hour_start} - ${timesSelectedAfterHairstyle.value[timesSelectedAfterHairstyle.value.length - 1].hour_end} - ${daySchedule.value.date} foi feito pela pessoa ${name.value}`,
                                 user_id: code,
                                 barber_id: "",
                                 is_master: false,
+                            })
+                            updateInfo({
+                                interactions: 1,
+                                warnings: 1,
+                                schedules: 1
                             })
                             show.setIsLoadingGlobal(false)
                             isActiveCode.value = true
@@ -445,7 +476,7 @@
                 config,
                 dateFormatted,
                 data,
-                hourSchedule,
+                daySchedule,
                 authentication,
                 times,
                 date,
@@ -469,7 +500,9 @@
                 nextHairstyle,
                 hairstyleSelected,
                 timesSelectedAfterHairstyle,
-                closeDialogSchedule
+                closeDialogSchedule,
+                router,
+                isOpen
             }
         }
     }
@@ -521,6 +554,10 @@
                             </div>
                         </div>
                         <div class="flex flex-col md:flex-row items-start md:items-center">
+                            <span class="font-weight-500 md:mr-2 mt-1">Preço:</span>
+                            <span class="font-weight-600 text-[1rem] mt-1 bg-neutral-700 rounded p-2 text-white">{{ hairstyleSelected.price_formatted }}</span>
+                        </div>
+                        <div class="flex flex-col md:flex-row items-start md:items-center">
                             <span class="font-weight-500 md:mr-2 mt-1">Horário inicial:</span>
                             <span class="font-weight-400 text-[1rem] mt-1">{{ timesSelectedAfterHairstyle[0].hour_start }}</span>
                         </div>
@@ -534,11 +571,11 @@
                         </div>
                         <div class="flex flex-col md:flex-row items-start md:items-center">
                             <span class="font-weight-500 md:mr-2 mt-1">Data:</span>
-                            <span class="font-weight-400 text-[1rem] mt-1">{{ hourSchedule.date }}</span>
+                            <span class="font-weight-400 text-[1rem] mt-1">{{ daySchedule.date }}</span>
                         </div>
                         <div class="flex flex-col md:flex-row items-start md:items-center">
                             <span class="font-weight-500 md:mr-2 mt-1">Barbeiro:</span>
-                            <span class="font-weight-400 text-[1rem] mt-1">{{ hourSchedule.barber_name }}</span>
+                            <span class="font-weight-400 text-[1rem] mt-1">{{ daySchedule.barber_name }}</span>
                         </div>
                     </div>
                 </div>
@@ -581,7 +618,10 @@
                             <div @click="nextHairstyle(hairstyle)" tabindex="0" class="cursor-pointer col-span-1 mt-2 bg-neutral-100 shadow p-2 rounded">
                                 <div class="flex items-center">
                                     <v-avatar :image="hairstyle.image_url" size="50" rounded="sm"></v-avatar>
-                                    <span class="ml-2">{{ hairstyle.name }}</span>
+                                    <div class="flex flex-col ml-2 items-start">
+                                        <span class="">{{ hairstyle.name }}</span>
+                                        <span class="font-weight-600 text-[0.9rem] mt-1 bg-neutral-700 rounded p-1 text-white">{{ hairstyle.price_formatted }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </template>
@@ -639,7 +679,7 @@
                         </div>
                         <!--<div class="flex items-center">
                             <span class="font-weight-600 mr-2">Contadores:</span>
-                            <span>{{ getCounters(hourSchedule.times_active, timeSelected.order) }}</span>
+                            <span>{{ getCounters(daySchedule.times_active, timeSelected.order) }}</span>
                         </div>-->
                         <div v-if="timeSelected.updated_at" class="flex flex-col md:flex-row items-start md:items-center">
                             <span class="font-weight-600 md:mr-2 mt-1">Última atualização:</span>
@@ -678,7 +718,7 @@
             <div v-if="!loading" class="grid grid-cols-1 shadow-lg rounded p-5 bg-white" style="border: 2px solid rgba(150, 150, 150, 0.1)">
                 <div class="col-span-1">
                     <div v-if="authentication.userId" class="flex items-center">
-                        <v-avatar :image="authentication.user.image_url" size="54" class="shadow"></v-avatar>
+                        <v-avatar @click="router.push('/mudar-imagem')" tabindex="0" :image="authentication.user.image_url" size="54" class="shadow cursor-pointer"></v-avatar>
                         <h1 class="ml-2 mb-0 text-lg md:text-xl font-weight-500">{{ authentication.user.name }}</h1>
                     </div>
                     <div v-else class="flex items-center">
@@ -691,19 +731,19 @@
                             <div class="flex flex-col">
                                 <div class="flex items-center">
                                     <span class="text-[0.9rem] font-weight-400 mr-1">Barbeiro:</span>
-                                    <span class="font-weight-500">{{ hourSchedule.barber_name }}</span>
+                                    <span class="font-weight-500">{{ daySchedule.barber_name }}</span>
                                 </div>
                                 <div class="flex items-center">
                                     <span class="text-[0.8rem] font-weight-400 mr-1">Dia:</span>
-                                    <span class="font-weight-500">{{ hourSchedule.day }}</span>
+                                    <span class="font-weight-500">{{ daySchedule.day }}</span>
                                 </div>
                                 <div class="flex items-center">
                                     <span class="text-[0.8rem] font-weight-400 mr-1">Mês:</span>
-                                    <span class="font-weight-500">{{ hourSchedule.month_formatted }}</span>
+                                    <span class="font-weight-500">{{ daySchedule.month_formatted }}</span>
                                 </div>
                                 <div class="flex items-center">
                                     <span class="text-[0.8rem] font-weight-400 mr-1">Duração:</span>
-                                    <span class="font-weight-500">{{ hourSchedule.duration_formatted }}</span>
+                                    <span class="font-weight-500">{{ daySchedule.duration_formatted }}</span>
                                 </div>
                             </div>
                         </div>
@@ -737,7 +777,7 @@
                                         <template v-for="(time, i) in times" :key="i">
                                         <v-list-item
                                             v-if="!time.is_scheduled && time.is_active && !time.is_cancelled"
-                                            :disabled="isAvaliableHour(time.hour_start, hourSchedule.year, hourSchedule.month, hourSchedule.day) ? false : true"
+                                            :disabled="isAvaliableHour(time.hour_start, daySchedule.year, daySchedule.month, daySchedule.day) ? false : true"
                                             :value="time"
                                             class="col-span-12 md:col-span-6"
                                             style="padding: 0;"
@@ -746,7 +786,7 @@
                                             <!-- Conteúdo completo do v-list-item -->
                                             <template v-slot:default>
                                                 <!-- Personalize o conteúdo do item aqui -->
-                                                <div :class="time.is_scheduled ? `bg-green-200 hover:bg-green-500 hover:text-white` : `bg-gray-200 hover:bg-gray-500 hover:text-white`" class="w-full h-full p-2 rounded shadow flex items-center justify-between" :style="isAvaliableHour(time.hour_start, hourSchedule.year, hourSchedule.month, hourSchedule.day) ? `` : `background-color: rgba(150, 17, 17, 0.3) !important;`">
+                                                <div :class="time.is_scheduled ? `bg-green-200 hover:bg-green-500 hover:text-white` : `bg-gray-200 hover:bg-gray-500 hover:text-white`" class="w-full h-full p-2 rounded shadow flex items-center justify-between" :style="isAvaliableHour(time.hour_start, daySchedule.year, daySchedule.month, daySchedule.day) ? `` : `background-color: rgba(150, 17, 17, 0.3) !important;`">
                                                     <div class="flex items-center">
                                                         <div v-if="time.is_active" class="mr-2">
                                                             <Icon name="ic:baseline-alarm" class="text-sm sm:text-base lg:text-lg" />
@@ -775,9 +815,15 @@
                                         </template>
                                     </v-list>
                                 </div>
+                                <div v-else class="col-span-1 mt-4">
+                                    <MasterNoResult v-if="daySchedule.is_open" title="Não tem agendamentos" padding="p-1" />
+                                    <div v-else class="bg-neutral-300/50 rounded p-1 flex justify-center">
+                                        <span class="font-weight-500 text-red-800">O dia está fechado, entre em contato com a barbearia</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-span-1 mt-5">
+                        <div class="col-span-1 mt-4">
                             <div class="flex justify-center items-center">
                                 <NuxtLink to="/" class="px-4 py-1 rounded shadow no-underline bg-gray-800 text-white">Voltar</NuxtLink>
                             </div>

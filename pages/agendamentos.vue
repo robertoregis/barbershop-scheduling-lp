@@ -26,7 +26,7 @@
             })
             // usando o firestore do firebase
             const { firestore, auth } = useFirebase()
-            const { addInteraction, addWarning } = useCreate()
+            const { addInteraction, addWarning, updateInfo } = useCreate()
             const router = useRouter()
             const toast = useToast()
             const config = ref<any>()
@@ -140,6 +140,10 @@
                         barber_id: "",
                         is_master: false,
                     })
+                    updateInfo({
+                        interactions: 1,
+                        warnings: 1
+                    })
                     show.setIsLoadingGlobal(false)
                     toast.success("Cancelado com sucesso!");
                     getSchedules()
@@ -217,6 +221,24 @@
                             })
                         }
                     })
+                    addInteraction({
+                        text: `Efetuou o cadastro`,
+                        user_id: userDoc.id,
+                        barber_id: "",
+                        is_master: false,
+                    })
+                    addWarning({
+                        type: "update",
+                        text: `Foi feito o cadastro do usuário ${name}`,
+                        user_id: userDoc.id,
+                        barber_id: "",
+                        is_master: false,
+                    })
+                    updateInfo({
+                        interactions: 1,
+                        users: 1,
+                        warnings: 1
+                    })
                 } catch(error) {
                     console.log(error)
                     show.setIsLoadingGlobal(false)
@@ -264,10 +286,13 @@
                 show.setIsLoadingGlobal(true)
                 signOut(auth).then(() => {
                     addInteraction({
-                        text: `O usuário ${authentication.user.name} saiu da conta`,
+                        text: `Saiu da conta`,
                         user_id: authentication.userId,
                         barber_id: "",
                         is_master: false,
+                    })
+                    updateInfo({
+                        interactions: 1,
                     })
                     authentication.setUserId('')
                     authentication.setUser({})
@@ -395,7 +420,8 @@
                 openLogin,
                 openRegister,
                 loadedSchedules,
-                logout
+                logout,
+                router
             }
         }
     }
@@ -404,6 +430,7 @@
 <template>
     <Login v-model="isActiveLogin" :is-active="isActiveLogin" :login-user="loginUser" :close-dialog-login="closeDialogLogin" :clear-login="clearLogin" :open-register="openRegister" />
     <Register v-model="isActiveRegister" :is-active-register="isActiveRegister" :create-user="createUser" :close-dialog-register="closeDialogRegister" :clear-register="clearRegister" :open-login="openLogin" />
+    <UserImage v-model="isActiveUserImage" :is-active-user-image="isActiveUserImage" :close-dialog-user-image="closeDialogUserImage" :image-file="imageFile" :image-url="imageUrl" />
     <v-dialog width="600" v-model="isActive">
     <template v-slot:default="{ isActive }">
         <v-card :title="hourSelected.name" subtitle="Intervalo">
@@ -411,8 +438,15 @@
             <div class="grid grid-cols-1">
                 <div class="col-span-1 mt-2">
                     <div class="flex flex-col items-start">
-                        <div v-if="hourSelected.is_cancelled" class="flex items-center bg-red-800 text-white justify-center px-3 py-1 rounded">
+                        <div v-if="hourSelected.is_cancelled" class="mb-1 flex items-center bg-red-800 text-white justify-center px-3 py-1 rounded">
                             <span class="font-weight-600">Está cancelado</span>
+                        </div>
+                        <div v-if="hourSelected.is_closed" class="flex items-center text-white justify-center px-3 py-1 rounded" style="background-color: rgba(220, 20, 20, 0.7);">
+                            <span class="font-weight-600">Está fechado</span>
+                        </div>
+                        <div v-if="hourSelected.is_closed" class="flex flex-col mt-2 shadow bg-neutral-200 p-2">
+                            <span class="text-sm font-weight-500">O agendamento está fechado. Ou seja, por alguma razão não vai ter o atendimento, mas o horário continua sendo teu. Descubra com a barbearia o que tá acontecendo</span>
+                            <span class="text-[0.85rem] font-weight-600 mt-1">Não é possível para você retirar o agendamento</span>
                         </div>
                         <div v-else class="flex items-center bg-green-800 text-white justify-center px-3 py-1 rounded">
                             <span class="font-weight-600">Está agendado</span>
@@ -431,7 +465,15 @@
                         </div>
                         <div class="flex flex-col md:flex-row items-start md:items-center mt-1">
                             <span class="font-weight-600 mr-2">Barbeiro:</span>
-                            <span class="text-lg">{{ hourSelected.barber_name }}</span>
+                            <span>{{ hourSelected.barber_name }}</span>
+                        </div>
+                        <div class="flex flex-col md:flex-row items-start md:items-center mt-1">
+                            <span class="font-weight-600 mr-2">Corte de cabelo:</span>
+                            <span>{{ hourSelected.hairstyle_name }}</span>
+                        </div>
+                        <div class="flex flex-col md:flex-row items-start md:items-center mt-1">
+                            <span class="font-weight-600 mr-2">Preço:</span>
+                            <span>{{ hourSelected.hairstyle_price }}</span>
                         </div>
                     </div>
                 </div>
@@ -453,6 +495,7 @@
         <v-card-actions>
             <v-spacer></v-spacer>
             <v-btn
+                v-if="!hourSelected.is_closed"
                 class="text-none"
                 color="orange-accent-4"
                 variant="flat"
@@ -477,7 +520,7 @@
             <div v-if="!loading" class="grid grid-cols-1 shadow-lg rounded p-5 bg-white" style="border: 2px solid rgba(150, 150, 150, 0.1)">
                 <div class="col-span-1">
                     <div v-if="authentication.userId" class="flex items-center">
-                        <v-avatar :image="authentication.user.image_url" size="54" class="shadow"></v-avatar>
+                        <v-avatar @click="router.push('/mudar-imagem')" tabindex="0" :image="authentication.user.image_url" size="54" class="shadow cursor-pointer"></v-avatar>
                         <h1 class="ml-2 mb-0 text-lg md:text-xl font-weight-500">{{ authentication.user.name }}</h1>
                     </div>
                     <div v-else class="flex items-center">
@@ -533,15 +576,15 @@
                                     <!-- Conteúdo completo do v-list-item -->
                                     <template v-slot:default>
                                         <!-- Personalize o conteúdo do item aqui -->
-                                        <div :class="hour.is_scheduled ? `bg-green-200 hover:bg-green-500 hover:text-white` : `bg-gray-200 hover:bg-gray-500 hover:text-white`" class="w-full h-full p-2 rounded shadow flex items-center justify-between" :style="hour.is_cancelled ? `background: rgba(220, 20, 20, 0.5);` : ``">
+                                        <div :class="hour.is_scheduled ? `bg-green-200 hover:bg-green-500 hover:text-white` : `bg-gray-200 hover:bg-gray-500 hover:text-white`" class="w-full h-full p-2 rounded shadow flex items-center justify-between" :style="hour.is_closed ? `background: rgba(220, 20, 20, 0.5);` : ``">
                                             <div class="flex items-center">
-                                                <div v-if="hour.is_active" class="mr-2">
+                                                <div v-if="!hour.is_closed" class="mr-2">
                                                     <Icon name="ic:baseline-alarm" class="text-sm sm:text-base lg:text-lg" />
-                                                    <v-tooltip text="Ativo" activator="parent" location="top" />
+                                                    <v-tooltip text="Aberto" activator="parent" location="top" />
                                                 </div>
                                                 <div v-else class="mr-2">
                                                     <Icon name="ic:baseline-alarm-off" class="text-sm sm:text-base lg:text-lg" />
-                                                    <v-tooltip text="Desativado" activator="parent" location="top" />
+                                                    <v-tooltip text="Fechado" activator="parent" location="top" />
                                                 </div>
                                                 <div class="flex items-center">
                                                     <span class="text-sm">{{ hour.name }}</span>

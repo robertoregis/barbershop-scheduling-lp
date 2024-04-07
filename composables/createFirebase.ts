@@ -1,4 +1,4 @@
-import { addDoc, collection, Timestamp } from "firebase/firestore";
+import { addDoc, collection, Timestamp, doc, updateDoc, increment } from "firebase/firestore";
 import { useFirebase } from "./useFirebase";
 import { useDateCurrent } from './date';
 
@@ -49,10 +49,24 @@ export const useCreate = () => {
       is_released: true,
     })
   }
+
+  const updateInfo = async (options: any) => {
+    const docRef = doc(firestore, "Info", "config");
+    await updateDoc(docRef, {
+        barbers_count: increment(options.barbers ? options.barbers : 0),
+        hairstyles_count: increment(options.hairstyles ? options.hairstyles : 0),
+        users_count: increment(options.users ? options.users : 0),
+        schedules_count: increment(options.schedules ? options.schedules : 0),
+        interactions_count: increment(options.interactions ? options.interactions : 0),
+        warnings_count: increment(options.warnings ? options.warnings : 0),
+        days_count: increment(options.days ? options.days : 0),
+    })
+  }
   
 
   return {
     addWarning,
-    addInteraction
+    addInteraction,
+    updateInfo
   };
 };

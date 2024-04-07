@@ -1,6 +1,6 @@
 <template>
     <div id="app">
-      <cropper ref="cropper" class="cropper" @change="change" :src="image.src" :stencil-props="{ aspectRatio: 12/12 }" />
+      <cropper ref="cropper" class="cropper" @change="change" :src="image.src" :stencil-props="{ aspectRatio: aspect === 1 ? 12/12 : 12/9 }" />
       <div class="button-wrapper">
         <button class="button" @click="file.click()">
           <input
@@ -17,21 +17,28 @@
     </div>
   </template>
   
-  <script>
+  <script lang="ts">
   import { Cropper } from "vue-advanced-cropper";
   import "vue-advanced-cropper/dist/style.css";
   
-  export default defineComponent({
+  export default {
     components: {
       Cropper,
     },
+    props: {
+      aspect: {
+        type: Number,
+        required: true
+      }
+    },
     setup(props, { emit }) {
+      const aspect = toRef(props, 'aspect')
       const image = reactive({
         src:
           "",
         type: "image/jpg",
       });
-      const fileImage = reactive({
+      const fileImage = reactive<any>({
         file: ""
       })
   
@@ -42,7 +49,7 @@
         if (cropper.value) {
           const { canvas } = cropper.value.getResult();
           image.src = canvas.toDataURL(image.type)
-          canvas.toBlob((blob) => {
+          canvas.toBlob((blob: any) => {
             // Cria um objeto de arquivo a partir do blob
             const file = new File([blob], 'cropped-image.jpg', { type: 'image/jpeg' });
             // Atualiza a variável reativa com o objeto de arquivo
@@ -51,7 +58,7 @@
         }
       };
   
-      const uploadImage = (event) => {
+      const uploadImage = (event: any) => {
         /// Reference to the DOM input element
         const { files } = event.target;
         fileImage.file = files[0]
@@ -72,6 +79,10 @@
 
       const sendFile = () => {
         emit('send-file', fileImage)
+        setTimeout(() => {
+          file.value = null
+          image.src = ''
+        }, 3000)
       }
   
       onUnmounted(() => {
@@ -86,10 +97,11 @@
         file,
         uploadImage,
         cropImage,
-        sendFile
+        sendFile,
+        aspect
       };
     },
-  });
+  }
   </script>
   
   <style lang="scss">

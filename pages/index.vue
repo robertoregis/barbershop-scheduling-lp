@@ -24,13 +24,13 @@
                 meta: [
                 {
                     name: 'description',
-                    content: 'Faça login no painel administrativo da IndicaPix, a empresa que conecta empresas e embaixadores para criar leads de alta qualidade.'
+                    content: 'Site oficial para agendamentos na Barbearia do Bronxs'
                 }
                 ]
             })
             // usando o firestore do firebase
             const { firestore, auth } = useFirebase()
-            const { addInteraction, addWarning } = useCreate()
+            const { addInteraction, addWarning, updateInfo } = useCreate()
             const router = useRouter()
             const toast = useToast()
             const salt = useRuntimeConfig().public.SALT
@@ -112,7 +112,7 @@
                         image_url: 'https://firebasestorage.googleapis.com/v0/b/app-barbearia-bronxs.appspot.com/o/avatar.png?alt=media&token=fe382f83-7697-4bdd-a1d1-6eddd6f3568c'
                     })
                     addInteraction({
-                        text: `O usuário ${name} efetuou o cadastro`,
+                        text: `Efetuou o cadastro`,
                         user_id: userDoc.id,
                         barber_id: "",
                         is_master: false,
@@ -123,6 +123,11 @@
                         user_id: userDoc.id,
                         barber_id: "",
                         is_master: false,
+                    })
+                    updateInfo({
+                        interactions: 1,
+                        users: 1,
+                        warnings: 1
                     })
                     toast.success('Sucesso ao criar a conta')
                     let date = new Date()
@@ -206,6 +211,15 @@
             }
             const logout = async () => {
                 signOut(auth).then(() => {
+                    addInteraction({
+                        text: `Saiu da conta`,
+                        user_id: authentication.userId,
+                        barber_id: "",
+                        is_master: false,
+                    })
+                    updateInfo({
+                        interactions: 1,
+                    })
                     authentication.setUserId('')
                     authentication.setUser({})
                     toast.success('Sucesso ao sair da conta')
@@ -367,7 +381,8 @@
                 clearLogin,
                 openLogin,
                 openRegister,
-                logout
+                logout,
+                router
             }
         }
     }
@@ -381,7 +396,7 @@
             <div v-if="!loading" class="grid grid-cols-1 shadow-lg rounded p-5 bg-white" style="border: 2px solid rgba(150, 150, 150, 0.1)">
                 <div v-if="authentication.userId" class="col-span-1">
                     <div class="flex items-center">
-                        <v-avatar :image="authentication.user.image_url" size="54" class="shadow"></v-avatar>
+                        <v-avatar @click="router.push('/mudar-imagem')" tabindex="0" :image="authentication.user.image_url" size="54" class="shadow cursor-pointer"></v-avatar>
                     </div>
                 </div>
                 <div class="col-span-1 mt-2">
